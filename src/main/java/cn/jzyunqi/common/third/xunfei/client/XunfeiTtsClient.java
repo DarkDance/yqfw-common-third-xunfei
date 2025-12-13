@@ -62,7 +62,7 @@ public class XunfeiTtsClient {
     public XunfeiWssToken getWebSocketURL() throws BusinessException {
         URI uri;
         try {
-            String date = LocalDateTime.now(DateTimeUtilPlus.GMT0_ZONE_ID).format(DateTimeUtilPlus.GMT0_DATE_FORMAT);
+            String date = LocalDateTime.now(DateTimeUtilPlus.UTC0_ZONE_REGION).format(DateTimeUtilPlus.GMT0_DATE_FORMAT);
 
             String waitSign = String.format(SIGN_TEMPLATE, HOST, date, PATH);
             String sign = DigestUtilPlus.Mac.sign(waitSign, apiSecret, DigestUtilPlus.MacAlgo.H_SHA256, Boolean.TRUE);
