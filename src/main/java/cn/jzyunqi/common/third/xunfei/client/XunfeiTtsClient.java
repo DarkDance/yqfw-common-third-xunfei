@@ -12,10 +12,10 @@ import cn.jzyunqi.common.utils.DateTimeUtilPlus;
 import cn.jzyunqi.common.utils.DigestUtilPlus;
 import cn.jzyunqi.common.utils.StringUtilPlus;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.net.URIBuilder;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
 import java.time.LocalDateTime;
@@ -47,13 +47,15 @@ public class XunfeiTtsClient {
      */
     private String apiSecret;
 
-    private ObjectMapper objectMapper;
+    private JsonMapper objectMapper;
 
-    public XunfeiTtsClient(String appId, String apiKey, String apiSecret, ObjectMapper objectMapper) {
+    public XunfeiTtsClient(String appId, String apiKey, String apiSecret) {
         this.appId = appId;
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;
-        this.objectMapper = prepareFeatureMapper(objectMapper);
+        this.objectMapper = JsonMapper.builder()
+                .changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(JsonInclude.Include.NON_NULL))
+                .build();
     }
 
     /**
@@ -132,7 +134,7 @@ public class XunfeiTtsClient {
 
         try {
             return objectMapper.writeValueAsString(ttsRequest);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("======XunfeiTtsHelper generateRequestDto error:", e);
             throw new BusinessException("common_error_xf_generate_request_dto_error");
         }
@@ -146,14 +148,9 @@ public class XunfeiTtsClient {
     public TtsResponse parserResponseDto(String data) throws BusinessException {
         try {
             return objectMapper.readValue(data, TtsResponse.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("======XunfeiTtsHelper parserResponseDto error:", e);
             throw new BusinessException("common_error_xf_parser_response_dto_error");
         }
-    }
-
-    private ObjectMapper prepareFeatureMapper(ObjectMapper om) {
-        om.setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
-        return om;
     }
 }

@@ -6,8 +6,6 @@ import cn.jzyunqi.common.third.xunfei.response.XunfeiBaseResponse;
 import cn.jzyunqi.common.utils.CollectionUtilPlus;
 import cn.jzyunqi.common.utils.DigestUtilPlus;
 import cn.jzyunqi.common.utils.StringUtilPlus;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.core5.net.URIBuilder;
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,12 +15,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -44,14 +43,14 @@ public class XunfeiOcrClient {
     /**
      * 第三方用户唯一凭证
      */
-    private String appId;
+    private final String appId;
 
     /**
      * 第三方用户唯一接口凭证
      */
-    private String apiKey;
+    private final String apiKey;
 
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
     public XunfeiOcrClient(String appId, String apiKey, RestTemplate restTemplate) {
         this.appId = appId;
@@ -61,7 +60,7 @@ public class XunfeiOcrClient {
         restTemplate.setMessageConverters(this.prepareFeatureConverter());
     }
 
-    public HandWritingDto handWriting(String language, String base64File)throws BusinessException {
+    public HandWritingDto handWriting(String language, String base64File) throws BusinessException {
         XunfeiBaseResponse<HandWritingDto> schedulePageRsp;
         try {
             String currTime = String.valueOf(System.currentTimeMillis() / 1000L);
@@ -81,28 +80,30 @@ public class XunfeiOcrClient {
             params.add("image", base64File);
 
             RequestEntity<MultiValueMap<String, Object>> requestEntity = new RequestEntity<>(params, httpHeaders, HttpMethod.POST, findScheduleUri);
-            ParameterizedTypeReference<XunfeiBaseResponse<HandWritingDto>> responseType = new ParameterizedTypeReference<XunfeiBaseResponse<HandWritingDto>>() {};
-            ResponseEntity<XunfeiBaseResponse<HandWritingDto>> responseEntity  = restTemplate.exchange(requestEntity, responseType);
+            ParameterizedTypeReference<XunfeiBaseResponse<HandWritingDto>> responseType = new ParameterizedTypeReference<XunfeiBaseResponse<HandWritingDto>>() {
+            };
+            ResponseEntity<XunfeiBaseResponse<HandWritingDto>> responseEntity = restTemplate.exchange(requestEntity, responseType);
             schedulePageRsp = Optional.ofNullable(responseEntity.getBody()).orElseGet(XunfeiBaseResponse::new);
-        }catch (Exception e) {
+        } catch (Exception e) {
             log.error("======XunfeiOcrHelper handWriting error:", e);
             throw new BusinessException("common_error_xf_hand_writing_error");
         }
 
-        if(schedulePageRsp.getCode().equals("0")){
+        if (schedulePageRsp.getCode().equals("0")) {
             return schedulePageRsp.getData();
-        }else{
+        } else {
             log.error("======XunfeiOcrHelper handWriting 200 error[{}][{}][{}]", schedulePageRsp.getSid(), schedulePageRsp.getCode(), schedulePageRsp.getDesc());
             throw new BusinessException("common_error_xf_hand_writing_failed");
         }
     }
 
 
-    private List<HttpMessageConverter<?>> prepareFeatureConverter(){
-        ObjectMapper om = Jackson2ObjectMapperBuilder.json().build();
-        om.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, Boolean.TRUE);
+    private List<HttpMessageConverter<?>> prepareFeatureConverter() {
+        JsonMapper om = JsonMapper.builder()
+                .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+                .build();
 
-        MappingJackson2HttpMessageConverter jsonConverter = new MappingJackson2HttpMessageConverter(om);
+        JacksonJsonHttpMessageConverter jsonConverter = new JacksonJsonHttpMessageConverter(om);
         jsonConverter.setSupportedMediaTypes(CollectionUtilPlus.Array.asList(MediaType.TEXT_PLAIN));
 
         List<HttpMessageConverter<?>> messageConverters = new ArrayList<>();
